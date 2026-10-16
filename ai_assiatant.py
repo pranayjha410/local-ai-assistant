@@ -10,6 +10,17 @@ client = OpenAI(
 )
 
 messages = []
+#system/developer 
+messages.append({
+    "role": "system",
+        "content": """
+        You are a patient Python tutor.
+        Explain technical concepts in simple English.
+        Use short examples.
+        If the user makes a mistake, explain why.
+        Do not invent facts when you are unsure.
+        """
+})
 
 while True:
     user_input = input("\nPranay: ")
