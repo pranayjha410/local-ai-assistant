@@ -1,6 +1,8 @@
 from openai import OpenAI
 from dotenv import load_dotenv
+from tool import TOOLS, FUNCTION_NAME_TO_FUNCTION_MAP  
 import os
+import json 
 
 load_dotenv()
 
@@ -11,16 +13,12 @@ client = OpenAI(
 
 messages = []
 #system/developer 
-messages.append({
-    "role": "system",
-        "content": """
-        You are a patient Python tutor.
-        Explain technical concepts in simple English.
-        Use short examples.
-        If the user makes a mistake, explain why.
-        Do not invent facts when you are unsure.
-        """
-})
+# messages.append({
+#     "role": "system",
+#     "content": "Act like agent that is explaining to 10 year old"
+# })
+from datetime import datetime
+
 
 while True:
     user_input = input("\nPranay: ")
@@ -35,13 +33,44 @@ while True:
 
     response = client.chat.completions.create(
         model=os.getenv("MODEL"),
-        messages=messages
+        messages=messages,
+       tools = TOOLS,
+       
     )
 
+    msg= response.choices[0].message
+    msg = response.choices[0].message
+
+    print("TOOL CALLS:", msg.tool_calls)
+    print("MODEL TEXT:", msg.content)
+    if msg.tool_calls:
+        messages.append(msg)
+
+        for tool_call in msg.tool_calls:
+            func_name = tool_call.function.name
+            func_arg = json.loads(tool_call.function.arguments or "{}")
+
+            fn = FUNCTION_NAME_TO_FUNCTION_MAP[func_name]
+            result = fn(**func_arg) #passing fun argu (para)in fun name
+
+            messages.append({
+                "role":"tool",
+                "tool_call_id": tool_call.id,
+                "content": str(result)
+            })
+
+        #2nd api call to llm 
+        response=client.chat.completions.create(
+            model=os.getenv("MODEL"),
+            messages=messages,
+        )
+
+        msg = response.choices[0].message
+        
     messages.append({
-            "role":"assistant","content":response.choices[0].message.content
+            "role":"assistant","content":msg.content
         })
 
     print("AI Response:")
-    print(response.choices[0].message.content)
+    print(msg.content)
 
